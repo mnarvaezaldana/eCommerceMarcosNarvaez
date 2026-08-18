@@ -1,7 +1,6 @@
 package com.yucatancorp.ecommercemarcosnarvaez.data
 
 import com.yucatancorp.ecommercemarcosnarvaez.domain.ProductsRepository
-import java.util.UUID
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
@@ -20,19 +19,21 @@ class ProductRepositoryImpl @Inject constructor(
             page = page
         ).item?.props?.pageProps?.initialData?.searchResult?.itemStacks?.firstOrNull()?.items?.forEach {
 
-            val name = it.name ?: "-"
-            val price = it.priceInfo?.priceDetails?.priceLines?.firstOrNull()?.values?.firstOrNull()?.value ?: "-.-"
-            val imageUrl = it.image ?: "-"
-            val offerId = it.offerId ?: ("." + UUID.randomUUID().toString())
+            val name = it.name
+            val price = it.priceInfo?.priceDetails?.priceLines?.firstOrNull()?.values?.firstOrNull()?.value
+            val imageUrl = it.image
+            val offerId = it.offerId
 
-            data.add(
-                ProductDomain(
-                    title = name,
-                    price = price,
-                    imageUrl = imageUrl,
-                    offerId = offerId
+            if (name != null && price != null && imageUrl != null && offerId != null) {
+                data.add(
+                    ProductDomain(
+                        title = name,
+                        price = price,
+                        imageUrl = imageUrl,
+                        offerId = offerId
+                    )
                 )
-            )
+            }
         }
 
         return data
