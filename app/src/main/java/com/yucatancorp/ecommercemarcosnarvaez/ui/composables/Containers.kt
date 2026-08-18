@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yucatancorp.ecommercemarcosnarvaez.presentation.ProductsViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 
 @Composable
 fun ProductsScreen(
@@ -53,6 +52,10 @@ fun ProductsScreen(
             singleLine = true
         )
 
+        Spacer(
+            modifier = Modifier.height(8.dp)
+        )
+
         Button(
             onClick = viewModel::search,
             modifier = Modifier.fillMaxWidth()
@@ -61,19 +64,24 @@ fun ProductsScreen(
         }
 
         if (history.isNotEmpty()) {
+
             Text(
                 text = "Búsquedas recientes",
                 style = MaterialTheme.typography.titleMedium
             )
-            history.take(5).forEach { query ->
-                TextButton(
-                    onClick = {
-                        viewModel.onQueryChanged(query)
+
+            history
+                .take(5)
+                .forEach { query ->
+
+                    TextButton(
+                        onClick = {
+                            viewModel.onQueryChanged(query)
+                        }
+                    ) {
+                        Text(query)
                     }
-                ) {
-                    Text(query)
                 }
-            }
 
             TextButton(
                 onClick = viewModel::clearSearchHistory
@@ -82,14 +90,25 @@ fun ProductsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(
+            modifier = Modifier.height(16.dp)
+        )
 
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f)
         ) {
-            items(items = state.products, key = { product -> product.offerId }) {
-                product -> ProductItem(product)
+
+            items(
+                items = state.products,
+                key = { product ->
+                    product.offerId
+                }
+            ) { product ->
+
+                ProductItem(
+                    product = product
+                )
             }
 
             if (state.isLoading) {
@@ -107,18 +126,28 @@ fun ProductsScreen(
         }
     }
 
-    LaunchedEffect(listState) {
+    LaunchedEffect(state.currentPage) {
+        if (state.currentPage == 1 && state.products.isNotEmpty()) {
+            listState.scrollToItem(0)
+        }
+    }
 
+    LaunchedEffect(listState) {
         snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index
-            val totalItems = layoutInfo.totalItemsCount
-            totalItems > 0 && lastVisibleItem != null && lastVisibleItem >= totalItems - 3
+            listState.layoutInfo
+                .visibleItemsInfo
+                .lastOrNull()
+                ?.index
         }
             .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                viewModel.loadNextPage()
+            .collect { lastVisibleIndex ->
+                if (lastVisibleIndex == null) {
+                    return@collect
+                }
+                val totalItems = listState.layoutInfo.totalItemsCount
+                if (totalItems > 0 && lastVisibleIndex >= totalItems - 3) {
+                    viewModel.loadNextPage()
+                }
             }
     }
 }

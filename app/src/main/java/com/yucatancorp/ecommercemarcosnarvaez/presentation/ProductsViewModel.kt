@@ -1,6 +1,5 @@
 package com.yucatancorp.ecommercemarcosnarvaez.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yucatancorp.ecommercemarcosnarvaez.domain.GetProductUseCase
@@ -8,13 +7,11 @@ import com.yucatancorp.ecommercemarcosnarvaez.domain.SearchHistoryManager
 import com.yucatancorp.ecommercemarcosnarvaez.utils.ServiceConstants.API_KEY
 import com.yucatancorp.ecommercemarcosnarvaez.utils.toProductUI
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class ProductsViewModel @Inject constructor(
@@ -27,8 +24,8 @@ class ProductsViewModel @Inject constructor(
 
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory = _searchHistory.asStateFlow()
-
-    private var searchJob: Job? = null
+    private var activeQuery: String = ""
+    private var searchVersion: Int = 0
 
     init {
         loadSearchHistory()
@@ -43,19 +40,15 @@ class ProductsViewModel @Inject constructor(
     fun search() {
 
         val query = _uiState.value.query.trim()
-
         if (query.isEmpty()) {
             return
         }
-
-        searchJob?.cancel()
-
+        activeQuery = query
+        searchVersion++
         searchHistoryManager.saveSearch(query)
         loadSearchHistory()
-
         _uiState.update {
             it.copy(
-                query = query,
                 products = emptyList(),
                 currentPage = 0,
                 hasMorePages = true,
@@ -73,68 +66,54 @@ class ProductsViewModel @Inject constructor(
         if (
             state.isLoading ||
             !state.hasMorePages ||
-            state.query.isBlank()
+            activeQuery.isBlank()
         ) {
             return
         }
 
-        val query = state.query
+        val query = activeQuery
         val nextPage = state.currentPage + 1
+        val currentSearchVersion = searchVersion
 
-        searchJob = viewModelScope.launch {
+        viewModelScope.launch {
 
             _uiState.update {
                 it.copy(isLoading = true)
             }
 
             try {
-
-                val data = useCase(
-                    API_KEY,
-                    query,
-                    nextPage
-                )
-
+                val data = useCase(API_KEY, query, nextPage)
                 val newProducts = data.toProductUI()
 
-                _uiState.update { currentState ->
-
-                    if (currentState.query != query) {
-                        currentState
-                    } else {
-                        currentState.copy(
-                            products = (
-                                    currentState.products + newProducts
-                                    ).distinctBy { it.offerId },
-
-                            currentPage = nextPage,
-                            isLoading = false,
-                            hasMorePages = newProducts.isNotEmpty()
-                        )
-                    }
+                if (currentSearchVersion != searchVersion) {
+                    return@launch
                 }
 
-            } catch (e: CancellationException) {
-                throw e
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        products = (currentState.products + newProducts).distinctBy { it.offerId },
+                        currentPage = nextPage,
+                        isLoading = false,
+                        hasMorePages = newProducts.isNotEmpty()
+                    )
+                }
 
             } catch (e: Exception) {
-
-                _uiState.update {
-                    it.copy(isLoading = false)
+                if (currentSearchVersion != searchVersion) {
+                    return@launch
                 }
 
-                Log.e(
-                    "ProductsViewModel",
-                    "Error",
-                    e
-                )
+                _uiState.update {
+                    it.copy(
+                        isLoading = false
+                    )
+                }
             }
         }
     }
 
     private fun loadSearchHistory() {
-        _searchHistory.value =
-            searchHistoryManager.getSearchHistory()
+        _searchHistory.value = searchHistoryManager.getSearchHistory()
     }
 
     fun clearSearchHistory() {
