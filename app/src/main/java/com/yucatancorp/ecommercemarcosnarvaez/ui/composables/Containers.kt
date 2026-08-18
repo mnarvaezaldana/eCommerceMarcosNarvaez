@@ -61,14 +61,11 @@ fun ProductsScreen(
         }
 
         if (history.isNotEmpty()) {
-
             Text(
                 text = "Búsquedas recientes",
                 style = MaterialTheme.typography.titleMedium
             )
-
             history.take(5).forEach { query ->
-
                 TextButton(
                     onClick = {
                         viewModel.onQueryChanged(query)
@@ -85,25 +82,17 @@ fun ProductsScreen(
             }
         }
 
-        Spacer(
-            modifier = Modifier.height(16.dp)
-        )
+        Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f)
         ) {
-
-            items(
-                items = state.products,
-                key = { product -> product.offerId }
-            ) { product ->
-
-                ProductItem(product)
+            items(items = state.products, key = { product -> product.offerId }) {
+                product -> ProductItem(product)
             }
 
             if (state.isLoading) {
-
                 item {
                     Box(
                         modifier = Modifier
@@ -121,18 +110,10 @@ fun ProductsScreen(
     LaunchedEffect(listState) {
 
         snapshotFlow {
-
             val layoutInfo = listState.layoutInfo
-
-            val lastVisibleItem =
-                layoutInfo.visibleItemsInfo.lastOrNull()?.index
-
-            val totalItems =
-                layoutInfo.totalItemsCount
-
-            totalItems > 0 &&
-                    lastVisibleItem != null &&
-                    lastVisibleItem >= totalItems - 3
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            val totalItems = layoutInfo.totalItemsCount
+            totalItems > 0 && lastVisibleItem != null && lastVisibleItem >= totalItems - 3
         }
             .distinctUntilChanged()
             .filter { it }
