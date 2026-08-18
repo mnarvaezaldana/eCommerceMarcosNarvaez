@@ -41,12 +41,18 @@ class ProductsViewModel @Inject constructor(
     }
 
     fun search() {
+
         val query = _uiState.value.query.trim()
-        if (query.isEmpty())
+
+        if (query.isEmpty()) {
             return
+        }
+
         searchJob?.cancel()
+
         searchHistoryManager.saveSearch(query)
         loadSearchHistory()
+
         _uiState.update {
             it.copy(
                 query = query,
@@ -56,12 +62,19 @@ class ProductsViewModel @Inject constructor(
                 isLoading = false
             )
         }
+
         loadNextPage()
     }
 
     fun loadNextPage() {
+
         val state = _uiState.value
-        if (state.isLoading || !state.hasMorePages || state.query.isBlank()) {
+
+        if (
+            state.isLoading ||
+            !state.hasMorePages ||
+            state.query.isBlank()
+        ) {
             return
         }
 
@@ -69,17 +82,31 @@ class ProductsViewModel @Inject constructor(
         val nextPage = state.currentPage + 1
 
         searchJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+
+            _uiState.update {
+                it.copy(isLoading = true)
+            }
 
             try {
-                val data = useCase(API_KEY, query, nextPage)
+
+                val data = useCase(
+                    API_KEY,
+                    query,
+                    nextPage
+                )
+
                 val newProducts = data.toProductUI()
+
                 _uiState.update { currentState ->
+
                     if (currentState.query != query) {
                         currentState
                     } else {
                         currentState.copy(
-                            products = (currentState.products + newProducts).distinctBy { it.offerId },
+                            products = (
+                                    currentState.products + newProducts
+                                    ).distinctBy { it.offerId },
+
                             currentPage = nextPage,
                             isLoading = false,
                             hasMorePages = newProducts.isNotEmpty()
@@ -88,18 +115,26 @@ class ProductsViewModel @Inject constructor(
                 }
 
             } catch (e: CancellationException) {
-                Log.e("error cancellation", e.localizedMessage ?: "Cancellation Error")
+                throw e
+
             } catch (e: Exception) {
-                Log.e("error", e.localizedMessage ?: "Exception Error")
+
                 _uiState.update {
                     it.copy(isLoading = false)
                 }
+
+                Log.e(
+                    "ProductsViewModel",
+                    "Error",
+                    e
+                )
             }
         }
     }
 
     private fun loadSearchHistory() {
-        _searchHistory.value = searchHistoryManager.getSearchHistory()
+        _searchHistory.value =
+            searchHistoryManager.getSearchHistory()
     }
 
     fun clearSearchHistory() {
