@@ -2,20 +2,20 @@ package com.yucatancorp.ecommercemarcosnarvaez.ui.composables
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +35,7 @@ fun ProductsScreen(
 ) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val history by viewModel.searchHistory.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
 
@@ -44,28 +45,65 @@ fun ProductsScreen(
             .padding(16.dp)
     ) {
 
-        Row(
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = viewModel::onQueryChanged,
+            label = { Text("Buscar") },
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            singleLine = true
+        )
+
+        Button(
+            onClick = viewModel::search,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Buscar")
+        }
+
+        if (history.isNotEmpty()) {
+
+            Text(
+                text = "Búsquedas recientes",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            history.take(5).forEach { query ->
+
+                TextButton(
+                    onClick = {
+                        viewModel.onQueryChanged(query)
+                    }
+                ) {
+                    Text(query)
+                }
+            }
+
+            TextButton(
+                onClick = viewModel::clearSearchHistory
+            ) {
+                Text("Borrar historial")
+            }
+        }
+
+        Spacer(
+            modifier = Modifier.height(16.dp)
+        )
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f)
         ) {
 
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChanged,
-                modifier = Modifier.weight(1f),
-                label = { Text("Buscar producto") },
-                singleLine = true
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { viewModel.search() }) { Text("Buscar") }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(items = state.products, key = { product -> product.offerId }) {
-                product -> ProductItem(product)
+            items(
+                items = state.products,
+                key = { product -> product.offerId }
+            ) { product ->
+
+                ProductItem(product)
             }
 
             if (state.isLoading) {
+
                 item {
                     Box(
                         modifier = Modifier
@@ -83,10 +121,18 @@ fun ProductsScreen(
     LaunchedEffect(listState) {
 
         snapshotFlow {
+
             val layoutInfo = listState.layoutInfo
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index
-            val totalItems = layoutInfo.totalItemsCount
-            lastVisibleItem != null && lastVisibleItem >= totalItems - 3
+
+            val lastVisibleItem =
+                layoutInfo.visibleItemsInfo.lastOrNull()?.index
+
+            val totalItems =
+                layoutInfo.totalItemsCount
+
+            totalItems > 0 &&
+                    lastVisibleItem != null &&
+                    lastVisibleItem >= totalItems - 3
         }
             .distinctUntilChanged()
             .filter { it }

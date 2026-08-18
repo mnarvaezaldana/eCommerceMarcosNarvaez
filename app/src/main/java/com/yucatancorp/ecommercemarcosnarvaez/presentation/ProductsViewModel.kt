@@ -3,8 +3,8 @@ package com.yucatancorp.ecommercemarcosnarvaez.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yucatancorp.ecommercemarcosnarvaez.data.ProductDomain
 import com.yucatancorp.ecommercemarcosnarvaez.domain.GetProductUseCase
+import com.yucatancorp.ecommercemarcosnarvaez.domain.SearchHistoryManager
 import com.yucatancorp.ecommercemarcosnarvaez.utils.ServiceConstants.API_KEY
 import com.yucatancorp.ecommercemarcosnarvaez.utils.toProductUI
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,11 +16,19 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProductsViewModel @Inject constructor(
-    private val useCase: GetProductUseCase
+    private val useCase: GetProductUseCase,
+    private val searchHistoryManager: SearchHistoryManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductsUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory = _searchHistory.asStateFlow()
+
+    init {
+        loadSearchHistory()
+    }
 
     fun onQueryChanged(query: String) {
         _uiState.update {
@@ -34,6 +42,7 @@ class ProductsViewModel @Inject constructor(
         if (query.isEmpty())
             return
 
+        searchHistoryManager.saveSearch(query)
         _uiState.update {
             it.copy(
                 products = emptyList(),
@@ -75,5 +84,14 @@ class ProductsViewModel @Inject constructor(
                 Log.e("ProductsViewModel", "Error", e)
             }
         }
+    }
+
+    private fun loadSearchHistory() {
+        _searchHistory.value = searchHistoryManager.getSearchHistory()
+    }
+
+    fun clearSearchHistory() {
+        searchHistoryManager.clearHistory()
+        _searchHistory.value = emptyList()
     }
 }
