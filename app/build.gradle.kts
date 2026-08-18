@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -53,6 +56,10 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.dagger.hilt)
     implementation(libs.gson.converter)
+    implementation(libs.dagger.hilt)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network)
+    ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
